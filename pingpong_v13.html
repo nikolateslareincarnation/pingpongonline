@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ping Pong</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<style>
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 10px;
+    background: #1d1d3a;
+    color: #fff;
+    font-family: "Pixelify Sans", Arial, sans-serif;
+    font-size: 14px;
+  }
+  button, input { font-family: inherit; font-size: 14px; }
+  button {
+    padding: 5px 10px;
+    cursor: pointer;
+    background: #ffd84a;
+    color: #2e1d00;
+    border: 2px solid #2e1d00;
+    font-weight: 600;
+  }
+  button:hover { background: #ffe980; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  input {
+    padding: 5px 7px;
+    width: 180px;
+    background: #15152a;
+    color: #fff;
+    border: 2px solid #3a3a5c;
+  }
+  input:focus { outline: none; border-color: #ffd84a; }
+  input[type=range] { width: 260px; padding: 0; accent-color: #ffd84a; }
+  h3 { margin: 0; font-size: 16px; }
+  .card { background: #232341; border-radius: 6px; padding: 8px 10px; }
+  .row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .small { font-size: 12px; color: #bbb; margin-top: 4px; min-height: 14px; }
+  .error { color: #ff6b6b; min-height: 16px; font-size: 13px; }
+
+  /* moving checkerboard background, drawn at low resolution and scaled up so it looks pixelated */
+  #bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  /* gold pixel logo */
+  .logo {
+    text-align: center;
+    font-weight: 700;
+    font-size: 44px;
+    letter-spacing: 2px;
+    line-height: 1.15;
+    padding: 8px 6px 4px;
+    margin: 4px 0 10px;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    background: linear-gradient(180deg, #fffbe0 0%, #ffe45c 30%, #ffb703 47%, #8a5a00 50%, #ffc93c 60%, #fff3b0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    filter:
+      drop-shadow(2px 0 0 #2e1d00) drop-shadow(-2px 0 0 #2e1d00)
+      drop-shadow(0 2px 0 #2e1d00) drop-shadow(0 -2px 0 #2e1d00)
+      drop-shadow(0 4px 0 #6b4300) drop-shadow(0 6px 0 #2e1d00);
+    animation: wobble 3s ease-in-out infinite;
+  }
+  .logo-sm { font-size: 30px; margin: 0 0 6px; }
+  .logo-still { animation: none; }
+  @keyframes wobble {
+    0%, 100% { transform: rotate(-2deg); }
+    50% { transform: rotate(2deg); }
+  }
+
+  /* menu, shop and leaderboard pages */
+  .menu-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .menu-btns button { font-size: 18px; padding: 8px 12px; }
+  .coinline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 16px;
+  }
+  .coin { display: inline-block; width: 80px; height: 96px; vertical-align: middle; image-rendering: pixelated; }
+  .coin.big { width: 120px; height: 144px; }
+  .wheel {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 4px 8px;
+    background: #15152a;
+    border: 2px solid #ffd84a;
+    border-radius: 6px;
+    user-select: none;
+  }
+  .wheel-value { font-size: 24px; font-weight: bold; min-width: 130px; color: #ffe066; }
+  .wheel button { padding: 2px 8px; }
+
+  /* paddle skins in the shop */
+  .skin-title { margin: 16px 0 0; font-size: 20px; }
+  .skin-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; text-align: left; }
+  .skin { display: flex; gap: 10px; align-items: flex-start; background: #15152a; border: 2px solid #3a3a5c; padding: 8px; }
+  .skin.equipped { border-color: #ffd84a; }
+  .skin-prev { width: 20px; height: 140px; flex: none; image-rendering: pixelated; }
+  .skin-info { flex: 1; min-width: 0; }
+  .skin-name { font-weight: bold; font-size: 15px; }
+  .skin-price { font-size: 12px; color: #ffe066; }
+  .skin-desc { font-size: 12px; color: #bbb; margin-top: 2px; }
+  .skin-btns { margin-top: 6px; }
+  .skin-equipped { font-size: 12px; font-weight: bold; color: #ffd84a; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .swatch { width: 22px; height: 22px; padding: 0; border: 2px solid #2e1d00; cursor: pointer; }
+  .swatch.picked { outline: 3px solid #fff; outline-offset: 1px; }
+
+  /* music toggle, bottom right corner */
+  .music-btn { position: fixed; right: 10px; bottom: 10px; z-index: 5; }
+
+  /* sign-in and create-account pages */
+  .page { max-width: 340px; margin: 50px auto; text-align: center; }
+  .page input { width: 100%; margin-top: 6px; }
+  .page .row button { flex: 1; }
+  .outlined {
+    border-radius: 0;
+    border: 3px solid #ffd84a;
+    box-shadow: 0 0 0 3px #2e1d00, 0 0 0 6px #ffd84a, 0 0 0 9px #2e1d00;
+    margin-top: 60px;
+    margin-bottom: 60px;
+  }
+
+  /* game screen */
+  /* dark panel behind the header so text stays readable on the white and black squares */
+  .header {
+    max-width: 900px;
+    margin: 0 auto;
+    background: rgba(20, 20, 40, 0.92);
+    border-radius: 6px;
+    padding: 6px 10px;
+  }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .header .logo-sm { margin: 0 0 4px; }
+  #userLine { font-size: 13px; }
+  #notice { text-align: center; color: #ffd166; font-size: 13px; min-height: 18px; }
+
+  .layout {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .main {
+    width: 640px;
+    max-width: 100%;
+    text-align: center;
+    background: rgba(20, 20, 40, 0.88);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .side { width: 260px; max-width: 100%; display: flex; flex-direction: column; gap: 10px; }
+
+  #scoreboard { font-size: 26px; font-weight: bold; }
+  #oppLabel { font-size: 12px; color: #aaa; min-height: 14px; }
+  #timer { font-size: 17px; color: #8ecae6; }
+  #timer.low { color: #ff6b6b; }
+
+  /* the arena: gold pixel frame with the same outline as the title */
+  .arena {
+    display: block;
+    width: min(100%, 652px);
+    margin: 6px auto;
+    padding: 6px;
+    background: linear-gradient(180deg, #fffbe0 0%, #ffe45c 30%, #ffb703 47%, #8a5a00 50%, #ffc93c 60%, #fff3b0 100%);
+    filter:
+      drop-shadow(2px 0 0 #2e1d00) drop-shadow(-2px 0 0 #2e1d00)
+      drop-shadow(0 2px 0 #2e1d00) drop-shadow(0 -2px 0 #2e1d00)
+      drop-shadow(0 4px 0 #6b4300) drop-shadow(0 6px 0 #2e1d00);
+  }
+  #game {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #000;
+    border: 3px solid #2e1d00;
+  }
+  #message { color: #ffd166; font-size: 15px; min-height: 18px; }
+  #replayBar { margin: 6px auto; max-width: 640px; }
+  .hint { color: #aaa; font-size: 12px; margin-top: 8px; }
+
+  /* openings (display only, not clickable) */
+  .opening {
+    border: 1px solid #3a3a5c;
+    border-radius: 5px;
+    padding: 6px 8px;
+    margin-top: 6px;
+    text-align: left;
+  }
+  .op-name { font-weight: bold; font-size: 14px; }
+  .op-tag { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+  .op-tag.strategist { color: #ffd84a; }   /* yellow */
+  .op-tag.offensive { color: #ff4d4d; }    /* red */
+  .op-tag.defensive { color: #8ed8ff; }    /* light blue */
+  .op-beginner {
+    display: inline-block;
+    margin-top: 2px;
+    padding: 0 5px;
+    font-size: 10px;
+    color: #0b4d24;                        /* dark green */
+    background: #bdf0cf;                   /* light backing so the dark green text stays readable */
+    border-radius: 3px;
+  }
+  .op-desc { font-size: 12px; color: #ccc; margin-top: 3px; }
+
+  /* progress and replays */
+  #historyList { max-height: 260px; overflow-y: auto; margin-top: 6px; }
+  .histRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    border-bottom: 1px solid #3a3a5c;
+    padding: 4px 0;
+    font-size: 12px;
+  }
+  .histRow .win { color: #8fe388; font-weight: bold; }
+  .histRow .loss { color: #ff8a8a; font-weight: bold; }
+
+  /* leaderboard */
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+  th, td { padding: 3px 4px; text-align: left; }
+  th { color: #8ecae6; border-bottom: 1px solid #3a3a5c; }
+</style>
+</head>
+<body>
+
+<canvas id="bg" width="320" height="200"></canvas>
+
+<!-- SIGN IN -->
+<div id="auth" class="card page">
+  <div class="logo">PING PONG</div>
+  <div class="row" id="resumeRow" hidden>
+    <button id="resumeBtn">Back to game</button>
+  </div>
+  <input id="loginId" type="text" placeholder="Email or username" autocomplete="username">
+  <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+  <div class="row">
+    <button id="signInBtn">Sign in</button>
+  </div>
+  <div class="row">
+    <button id="toSignUpBtn">Create account</button>
+    <button id="guestBtn">Play as guest</button>
+  </div>
+  <p class="small">Guest matches are not ranked or saved.</p>
+  <p id="authError" class="error"></p>
+</div>
+
+<!-- CREATE ACCOUNT -->
+<div id="signup" class="card page outlined" hidden>
+  <div class="logo logo-sm logo-still">Create account</div>
+  <input id="newUsername" type="text" placeholder="Username (3-16 letters, numbers, _)" maxlength="16" autocomplete="username">
+  <input id="newEmail" type="email" placeholder="Email" autocomplete="email">
+  <input id="newPassword" type="password" placeholder="Password (6+ characters)" autocomplete="new-password">
+  <div class="row">
+    <button id="createAccountBtn">Create account</button>
+  </div>
+  <div class="row">
+    <button id="toSignInBtn">Back to sign in</button>
+  </div>
+  <p id="signupNote" class="small"></p>
+  <p id="signupError" class="error"></p>
+</div>
+
+<!-- MENU -->
+<div id="menu" class="card page" hidden>
+  <div class="logo">PING PONG</div>
+  <div id="menuUser" class="small"></div>
+  <div class="coinline">
+    <span id="menuCoinIcon"></span>
+    <span>Medallions: <b id="menuCoins">0</b></span>
+  </div>
+  <div class="menu-btns">
+    <button id="menuPlayBtn">Play</button>
+    <button id="menuShopBtn">Shop</button>
+    <button id="menuBoardBtn">Leaderboard</button>
+  </div>
+  <div class="row">
+    <button id="menuSignOutBtn">Sign out</button>
+  </div>
+  <p id="menuNote" class="small"></p>
+</div>
+
+<!-- SHOP -->
+<div id="shop" class="card page" hidden>
+  <div class="logo logo-sm">Shop</div>
+  <div class="coinline">
+    <span id="shopCoinIcon"></span>
+    <span>Medallions: <b id="shopCoins">0</b></span>
+  </div>
+  <p id="shopRate" class="small"></p>
+  <p class="small">Scroll over the number or use the arrows to choose how much Elo to exchange.</p>
+  <div id="wheel" class="wheel" title="Scroll to choose an amount">
+    <button id="wheelDownBtn">&#9660;</button>
+    <div id="wheelValue" class="wheel-value">0 Elo</div>
+    <button id="wheelUpBtn">&#9650;</button>
+  </div>
+  <div class="row">
+    <button id="exchangeBtn">Exchange</button>
+  </div>
+  <h3 class="skin-title">Paddle skins</h3>
+  <p class="small">Skins change how your paddle looks. Its size and hit area stay the same.</p>
+  <div id="skinList" class="skin-list"></div>
+  <div class="row">
+    <button id="classicBtn">Use the classic white paddle</button>
+  </div>
+  <div class="row">
+    <button id="shopBackBtn">Back to menu</button>
+  </div>
+  <p id="shopNote" class="small"></p>
+</div>
+
+<!-- LEADERBOARD -->
+<div id="board" class="card page" hidden>
+  <div class="logo logo-sm">Leaderboard</div>
+  <table>
+    <thead><tr><th>#</th><th>Player</th><th>Elo</th><th>W-L</th></tr></thead>
+    <tbody id="boardBody"></tbody>
+  </table>
+  <p id="boardNote" class="small"></p>
+  <div class="row">
+    <button id="boardBackBtn">Back to menu</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="app" hidden>
+  <div class="header">
+    <div class="topbar">
+      <button id="backBtn">&larr; Menu</button>
+      <span id="userLine"></span>
+      <button id="signOutBtn">Sign out</button>
+    </div>
+    <div class="logo logo-sm">PING PONG</div>
+    <div id="notice"></div>
+  </div>
+
+  <div class="layout">
+    <div class="main">
+      <div id="scoreboard"><span id="score1">0</span> : <span id="score2">0</span></div>
+      <div id="oppLabel"></div>
+      <div id="timer">5:00</div>
+      <div class="arena"><canvas id="game" width="640" height="400"></canvas></div>
+      <div id="message"></div>
+
+      <div id="replayBar" class="row" hidden>
+        <button id="playPauseBtn">Play</button>
+        <input id="seekBar" type="range" min="0" max="300" step="0.05" value="0">
+        <button id="exitReplayBtn">Exit replay</button>
+      </div>
+
+      <div class="row">
+        <button id="modeBtn">Mode: vs Computer</button>
+        <button id="restartBtn">Restart</button>
+      </div>
+
+      <p class="hint">
+        Left paddle: W / S. Right paddle: UP / DOWN arrows in vs Player, or the computer in vs Computer.<br>
+        vs Computer: you can also aim with the mouse or your finger. SPACE or click: serve / pause / continue.
+      </p>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <h3>Openings</h3>
+        <div id="openingList"></div>
+      </div>
+      <div class="card">
+        <h3>Your progress</h3>
+        <div id="progressSummary" class="small"></div>
+        <div id="historyList"></div>
+        <div id="replayNote" class="small"></div>
+      </div>
+      <div class="card">
+        <h3>Leaderboard</h3>
+        <table>
+          <thead><tr><th>#</th><th>Player</th><th>Elo</th><th>W-L</th></tr></thead>
+          <tbody id="leaderBody"></tbody>
+        </table>
+        <div class="small">Ranked players only. Stored on this device.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button id="musicBtn" class="music-btn">Music: on</button>
+
+<script>
+  // ===================== SETTINGS =====================
+  const WIN_SCORE = 10;        // first to 10 goals wins
+  const MATCH_SECONDS = 300;   // 5:00 match clock
+  const WIN_ELO = 30;          // Elo for winning a match (vs Computer only)
+  const GOAL_ELO = 10;         // Elo for every goal you score (vs Computer only)
+  const START_ELO = 0;         // new accounts start at 0 Elo
+  const RANKED_ELO = 500;      // from this much Elo you are Ranked and appear on the leaderboard
+  const EXCHANGE_RATE = 10;    // shop: this much Elo buys 1 medallion
+  const WHEEL_STEP = 10;       // shop: each scroll moves the amount by this much Elo
+
+  // ===================== COIN ART =====================
+  // A gold coin with a pong paddle and ball inside, and a red, white and blue ribbon that comes
+  // up over the top of the coin and hangs down to the left. It is drawn one pixel at a time
+  // (40 x 48 pixels) and shown larger with hard edges, so it looks pixelated.
+  function makeCoinImage() {
+    const W = 40, H = 48;
+    const cx = 22, cy = 25, R = 15;                                  // coin center and radius, in pixels
+    const ribbon = [[21, 14], [21, 4], [11, 4], [5, 20], [3, 46]];   // ribbon centerline
+    const HALF = 2.2;                                                // half the ribbon's width
+
+    // the ribbon's total length, so the three colors can be spread along it
+    let total = 0;
+    for (let i = 1; i < ribbon.length; i++) {
+      total += Math.hypot(ribbon[i][0] - ribbon[i - 1][0], ribbon[i][1] - ribbon[i - 1][1]);
+    }
+
+    // closest point on the ribbon to (px, py): its distance, and how far along the ribbon it is
+    function ribbonAt(px, py) {
+      let best = { d: Infinity, s: 0 };
+      let walked = 0;
+      for (let i = 1; i < ribbon.length; i++) {
+        const ax = ribbon[i - 1][0], ay = ribbon[i - 1][1];
+        const bx = ribbon[i][0], by = ribbon[i][1];
+        const len = Math.hypot(bx - ax, by - ay);
+        const t = Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / (len * len)));
+        const d = Math.hypot(px - (ax + t * (bx - ax)), py - (ay + t * (by - ay)));
+        if (d < best.d) best = { d, s: walked + t * len };
+        walked += len;
+      }
+      return best;
+    }
+
+    const RED = [214, 40, 40], WHITE = [245, 245, 245], BLUE = [29, 78, 216];
+    const OUTLINE = [46, 29, 0], RIM = [138, 90, 0];
+    const GOLD_HI = [255, 247, 194], GOLD = [255, 216, 74], GOLD_MID = [224, 165, 38], GOLD_LO = [184, 134, 11];
+    const PADDLE = [46, 29, 0], PADDLE_HI = [154, 96, 40], BALL = [255, 255, 255];
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const g = canvas.getContext("2d");
+    const img = g.createImageData(W, H);   // starts fully transparent
+
+    function setPixel(x, y, c) {
+      const i = (y * W + x) * 4;
+      img.data[i] = c[0];
+      img.data[i + 1] = c[1];
+      img.data[i + 2] = c[2];
+      img.data[i + 3] = 255;
+    }
+
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const px = x + 0.5, py = y + 0.5;
+        const dc = Math.hypot(px - cx, py - cy);
+
+        if (dc <= R) {
+          // the coin: dark outline, a darker rim, then the face in four flat tones of light
+          if (dc > R - 1.2) {
+            setPixel(x, y, OUTLINE);
+          } else if (dc > R - 2.6) {
+            setPixel(x, y, RIM);
+          } else {
+            const nx = (px - cx) / R, ny = (py - cy) / R;
+            const light = -(nx * 0.6 + ny * 0.8);   // light comes from the top left
+            setPixel(x, y, light > 0.5 ? GOLD_HI : light > 0.1 ? GOLD : light > -0.35 ? GOLD_MID : GOLD_LO);
+          }
+
+          // the pong paddle and ball on the face
+          const inBlade = Math.pow((px - (cx - 2)) / 5.2, 2) + Math.pow((py - (cy - 4)) / 6.2, 2) <= 1;
+          const inHandle = px >= cx - 3.5 && px <= cx + 0.5 && py >= cy + 1.5 && py <= cy + 11;
+          const inShine = Math.pow((px - (cx - 4)) / 1.6, 2) + Math.pow((py - (cy - 6.5)) / 2.2, 2) <= 1;
+          if (inBlade || inHandle) setPixel(x, y, inShine ? PADDLE_HI : PADDLE);
+
+          const bd = Math.hypot(px - (cx + 7), py - (cy - 6));
+          if (bd <= 1.9) setPixel(x, y, BALL);
+          else if (bd <= 2.9 && dc <= R - 2.6) setPixel(x, y, OUTLINE);
+        } else {
+          // the ribbon, which sits behind the coin
+          const hit = ribbonAt(px, py);
+          if (hit.d <= HALF) {
+            const share = hit.s / total;
+            setPixel(x, y, share < 0.34 ? RED : share < 0.67 ? WHITE : BLUE);
+          } else if (hit.d <= HALF + 1) {
+            setPixel(x, y, OUTLINE);
+          }
+        }
+      }
+    }
+
+    g.putImageData(img, 0, 0);
+    return canvas.toDataURL("image/png");
+  }
+
+  const COIN_URL = makeCoinImage();
+  const MAX_REPLAYS = 12;      // replays kept in this browser
+  const MAX_HISTORY = 40;      // match history rows kept per account
+  const REPLAY_STEP = 0.05;    // one replay frame every 0.05 seconds of match time
+
+  // Background music. Put your song file in the same folder as this file and name it sphere.mp3
+  // (or change this to the file's name). The song starts at MUSIC_START seconds.
+  const MUSIC_SRC = "sphere.mp3";
+  const MUSIC_START = 22;      // seconds into the track where playback starts, and where it restarts after it ends
+
+  // Welcome email, sent with EmailJS (emailjs.com). Paste your three values here.
+  // While they still say YOUR_..., accounts work but no email is sent.
+  const EMAIL = {
+    serviceId: "YOUR_SERVICE_ID",
+    templateId: "YOUR_TEMPLATE_ID",
+    publicKey: "YOUR_PUBLIC_KEY"
+  };
+  const EMAIL_READY = Object.values(EMAIL).every((v) => !v.startsWith("YOUR_"));
+
+  const W = 640, H = 400;      // canvas size
+  const PADDLE_W = 10, PADDLE_H = 70, PADDLE_EDGE = 20, PADDLE_SPEED = 6;
+  const BALL_R = 6;
+  const START_SPEED = 5, MAX_SPEED = 11, SPEED_UP = 0.3;
+
+  // background checkerboard: each background pixel is BG_SCALE screen pixels
+  const BG_SCALE = 6;
+  const BG_CELL = 5;           // square size in background pixels
+  const BG_SPEED = 9;          // background pixels per second, moving left
+  const BG_DARK = "#000000";
+  const BG_LIGHT = "#ffffff";
+
+  // ===================== PADDLE SKINS =====================
+  // Skins only change how a paddle looks. Every paddle is still PADDLE_W x PADDLE_H for hits.
+  // Paddle styles are strings: "none" (classic white), "color:#rrggbb" or "rainbow".
+  const SKIN_COLORS = ["#ff6b6b", "#ff9f1c", "#ffd166", "#06d6a0", "#4cc9f0", "#4361ee", "#c77dff", "#ff8fd8"];
+  const SKINS = [
+    { id: "color", name: "Color Skins", price: 250, desc: "Pick one solid color for your paddle." },
+    { id: "rainbow", name: "Rainbow Skin", price: 500, desc: "Your paddle slowly cycles through the colors of the rainbow." }
+  ];
+
+
+  const OPENINGS = {
+    dagger: {
+      name: "Dagger's Rush",
+      tag: "Offensive Playstyle",
+      category: "offensive",
+      desc: "Strike with the top or bottom corner of your paddle, like a dagger, to send the ball steeply up or down."
+    },
+    jester: {
+      name: "Jester's Contraction",
+      tag: "Strategist Playstyle",
+      category: "strategist",
+      desc: "Do something so unexpected it looks foolish: a huge, risky move that seems like a blunder. Your opponent thinks you've made a mistake, but the risk was calculated and sets up a point you planned from the start."
+    },
+    trojan: {
+      name: "Trojan Horse",
+      tag: "Strategist Playstyle",
+      category: "strategist",
+      desc: "Look like you're playing badly: sloppy returns and slow reactions, as if you're barely keeping up. Wait for your opponent's guard to drop, then strike when they least expect it."
+    },
+    solomon: {
+      name: "Solomon's Wisdom",
+      tag: "Defensive Playstyle",
+      category: "defensive",
+      desc: "Anchor thy blade at the center, cushion the foe's fury, and let their own impatience divide them."
+    },
+    tree: {
+      name: "Stubborn Tree-Stump",
+      tag: "Offensive Playstyle",
+      category: "offensive",
+      beginner: true,
+      desc: "Plant your feet like an old tree stump and refuse to budge. Your returns come back slow and heavy, so the ball keeps coming back and your opponent has to keep reaching for it."
+    }
+  };
+
+  // ===================== PAGE ELEMENTS =====================
+  const bgCanvas = document.getElementById("bg");
+  const bgCtx = bgCanvas.getContext("2d");
+  const authEl = document.getElementById("auth");
+  const signupEl = document.getElementById("signup");
+  const appEl = document.getElementById("app");
+  const loginIdInput = document.getElementById("loginId");
+  const loginPasswordInput = document.getElementById("loginPassword");
+  const authError = document.getElementById("authError");
+  const signInBtn = document.getElementById("signInBtn");
+  const toSignUpBtn = document.getElementById("toSignUpBtn");
+  const guestBtn = document.getElementById("guestBtn");
+  const resumeRow = document.getElementById("resumeRow");
+  const resumeBtn = document.getElementById("resumeBtn");
+  const newUsernameInput = document.getElementById("newUsername");
+  const newEmailInput = document.getElementById("newEmail");
+  const newPasswordInput = document.getElementById("newPassword");
+  const createAccountBtn = document.getElementById("createAccountBtn");
+  const toSignInBtn = document.getElementById("toSignInBtn");
+  const signupNote = document.getElementById("signupNote");
+  const signupError = document.getElementById("signupError");
+  const backBtn = document.getElementById("backBtn");
+  const signOutBtn = document.getElementById("signOutBtn");
+  const userLineEl = document.getElementById("userLine");
+  const noticeEl = document.getElementById("notice");
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const score1El = document.getElementById("score1");
+  const score2El = document.getElementById("score2");
+  const oppLabelEl = document.getElementById("oppLabel");
+  const timerEl = document.getElementById("timer");
+  const messageEl = document.getElementById("message");
+  const modeBtn = document.getElementById("modeBtn");
+  const restartBtn = document.getElementById("restartBtn");
+  const replayBar = document.getElementById("replayBar");
+  const playPauseBtn = document.getElementById("playPauseBtn");
+  const seekBar = document.getElementById("seekBar");
+  const exitReplayBtn = document.getElementById("exitReplayBtn");
+  const openingListEl = document.getElementById("openingList");
+  const progressSummaryEl = document.getElementById("progressSummary");
+  const historyListEl = document.getElementById("historyList");
+  const replayNoteEl = document.getElementById("replayNote");
+  const leaderBodyEl = document.getElementById("leaderBody");
+  const musicBtn = document.getElementById("musicBtn");
+  const menuEl = document.getElementById("menu");
+  const menuUserEl = document.getElementById("menuUser");
+  const menuCoinIconEl = document.getElementById("menuCoinIcon");
+  const menuCoinsEl = document.getElementById("menuCoins");
+  const menuNoteEl = document.getElementById("menuNote");
+  const menuPlayBtn = document.getElementById("menuPlayBtn");
+  const menuShopBtn = document.getElementById("menuShopBtn");
+  const menuBoardBtn = document.getElementById("menuBoardBtn");
+  const menuSignOutBtn = document.getElementById("menuSignOutBtn");
+  const shopEl = document.getElementById("shop");
+  const shopCoinIconEl = document.getElementById("shopCoinIcon");
+  const shopCoinsEl = document.getElementById("shopCoins");
+  const shopRateEl = document.getElementById("shopRate");
+  const wheelEl = document.getElementById("wheel");
+  const wheelValueEl = document.getElementById("wheelValue");
+  const wheelUpBtn = document.getElementById("wheelUpBtn");
+  const wheelDownBtn = document.getElementById("wheelDownBtn");
+  const exchangeBtn = document.getElementById("exchangeBtn");
+  const shopBackBtn = document.getElementById("shopBackBtn");
+  const shopNoteEl = document.getElementById("shopNote");
+  const skinListEl = document.getElementById("skinList");
+  const classicBtn = document.getElementById("classicBtn");
+  const boardEl = document.getElementById("board");
+  const boardBodyEl = document.getElementById("boardBody");
+  const boardNoteEl = document.getElementById("boardNote");
+  const boardBackBtn = document.getElementById("boardBackBtn");
+
+  // ===================== STATE =====================
+  let users = loadJson("pp_users", {});
+  let replayStore = loadJson("pp_replays", {});
+  let currentUser = null;
+
+  let mode = "bot";        // "bot" = vs Computer, "local" = vs Player on this keyboard (offline)
+  // openings are display only, so nothing is selected and both paddles stay white
+  let state = "serve";     // "serve" | "playing" | "paused" | "over"
+  let serveDir = 1;
+  let s1 = 0, s2 = 0;      // s1 = left paddle, s2 = right paddle
+  let timeLeft = MATCH_SECONDS;
+  let suddenDeath = false;
+  let winnerSide = null;   // "left" or "right"
+
+  let recording = null;    // the account match being recorded
+  let replay = null;       // the replay being watched
+
+  let flashText = "";
+  let flashUntil = 0;
+  let noticeTimer = null;
+  let bgOffset = 0;
+  let wheelAmount = 0;     // Elo chosen on the shop wheel
+
+  const ball = { x: W / 2, y: H / 2, vx: 0, vy: 0, speed: START_SPEED };
+  const paddles = { left: makePaddle("left"), right: makePaddle("right") };
+  const keys = {};
+  let lastTime = performance.now();
+
+  function makePaddle(side) {
+    const x = side === "left" ? PADDLE_EDGE : W - PADDLE_EDGE - PADDLE_W;
+    return {
+      side, x,
+      y: H / 2 - PADDLE_H / 2,
+      target: H / 2 - PADDLE_H / 2,
+      style: "none"
+    };
+  }
+
+  // ===================== HELPERS =====================
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+  function setText(el, text) { if (el.textContent !== text) el.textContent = text; }
+  function formatTime(sec) {
+    const total = Math.ceil(sec);
+    return Math.floor(total / 60) + ":" + String(total % 60).padStart(2, "0");
+  }
+  function escapeHtml(str) {
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function loadJson(key, fallback) {
+    try {
+      return JSON.parse(localStorage.getItem(key)) || fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+  // matches that change Elo and get saved: signed in, vs Computer
+  function countsForElo() { return mode === "bot" && !!currentUser && !currentUser.guest; }
+  // Ranked starts at RANKED_ELO. Below that you are Unranked but still earn Elo.
+  function rankLabel(u) {
+    return u.elo >= RANKED_ELO ? "Ranked" : "Unranked, " + (RANKED_ELO - u.elo) + " to Ranked";
+  }
+  function releaseKeys() { for (const k in keys) keys[k] = false; }
+
+  // short message in the notice line under the top bar
+  function notify(text) {
+    noticeEl.textContent = text;
+    menuNoteEl.textContent = text;   // the menu shows the same messages
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => { noticeEl.textContent = ""; menuNoteEl.textContent = ""; }, 8000);
+  }
+
+  // ===================== ACCOUNTS (stored in this browser) =====================
+  function saveUsers() { localStorage.setItem("pp_users", JSON.stringify(users)); }
+
+  function trimReplays() {
+    const list = Object.values(replayStore).sort((a, b) => a.date.localeCompare(b.date));
+    while (list.length > MAX_REPLAYS) delete replayStore[list.shift().id];
+  }
+
+  // deletes the oldest replays if browser storage is full
+  function saveReplays() {
+    trimReplays();
+    while (true) {
+      try {
+        localStorage.setItem("pp_replays", JSON.stringify(replayStore));
+        return true;
+      } catch (e) {
+        const list = Object.values(replayStore).sort((a, b) => a.date.localeCompare(b.date));
+        if (list.length === 0) return false;
+        delete replayStore[list[0].id];
+      }
+    }
+  }
+
+  // accounts saved by earlier versions get a username and a history list
+  function upgradeAccounts() {
+    for (const email of Object.keys(users)) {
+      const u = users[email];
+      if (!u.username) {
+        let base = email.split("@")[0].replace(/[^A-Za-z0-9_]/g, "").slice(0, 12);
+        if (base.length < 3) base = "player" + base;
+        let name = base;
+        for (let n = 2; usernameTaken(name); n++) name = base + n;
+        u.username = name;
+      }
+      if (!u.history) u.history = [];
+      // the currency used to be called coins; keep the balance under its new name
+      if (u.medallions === undefined) u.medallions = u.coins || 0;
+      delete u.coins;
+      if (!u.skins) u.skins = { color: false, rainbow: false };
+      if (!u.equipped) u.equipped = "classic";
+      if (!u.skinColor) u.skinColor = SKIN_COLORS[0];
+      // Elo used to start at 1000. Remove that starting amount and keep everything earned since.
+      if ((u.eloVersion || 1) < 2) {
+        u.elo = Math.max(0, u.elo - 1000);
+        u.eloVersion = 2;
+      }
+    }
+    saveUsers();
+  }
+
+  function usernameTaken(name) {
+    const key = name.toLowerCase();
+    return Object.values(users).some((u) => u.username && u.username.toLowerCase() === key);
+  }
+
+  // finds an account by email or username
+  function findUser(text) {
+    const key = text.trim().toLowerCase();
+    if (!key) return null;
+    if (users[key]) return users[key];
+    return Object.values(users).find((u) => u.username && u.username.toLowerCase() === key) || null;
+  }
+
+  function randomHex(bytes) {
+    const arr = crypto.getRandomValues(new Uint8Array(bytes));
+    return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  async function hashPassword(salt, password) {
+    const data = new TextEncoder().encode(salt + ":" + password);
+    const buf = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  // Sends the welcome email through EmailJS. The password is never included.
+  async function sendWelcomeEmail(user) {
+    if (!EMAIL_READY) return "not-set-up";
+    try {
+      const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          service_id: EMAIL.serviceId,
+          template_id: EMAIL.templateId,
+          user_id: EMAIL.publicKey,
+          template_params: { to_email: user.email, to_name: user.username, username: user.username }
+        })
+      });
+      return res.ok ? "sent" : "failed";
+    } catch (err) {
+      return "failed";
+    }
+  }
+
+  function showAuthError(text) { authError.textContent = text; }
+  function showSignupError(text) { signupError.textContent = text; }
+
+  async function createAccount() {
+    const username = newUsernameInput.value.trim();
+    const email = newEmailInput.value.trim().toLowerCase();
+    const password = newPasswordInput.value;
+    if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) return showSignupError("Username: 3-16 letters, numbers or _.");
+    if (usernameTaken(username)) return showSignupError("That username is taken.");
+    if (!/^\S+@\S+\.\S+$/.test(email)) return showSignupError("Enter a valid email address.");
+    if (users[email]) return showSignupError("An account with that email already exists.");
+    if (password.length < 6) return showSignupError("Password must be at least 6 characters.");
+
+    const salt = randomHex(16);
+    const user = {
+      email, username, salt,
+      hash: await hashPassword(salt, password),
+      elo: START_ELO, eloVersion: 2, medallions: 0, wins: 0, losses: 0, goals: 0,
+      skins: { color: false, rainbow: false }, equipped: "classic", skinColor: SKIN_COLORS[0],
+      history: []
+    };
+    users[email] = user;
+    saveUsers();
+    logIn(email);
+    notify("Account created. Sending your welcome email...");
+
+    const status = await sendWelcomeEmail(user);
+    if (status === "sent") notify("Welcome, " + username + "! A welcome email was sent to " + email + ".");
+    else if (status === "not-set-up") notify("Welcome, " + username + "! (The welcome email isn't set up yet.)");
+    else notify("Welcome, " + username + "! The welcome email could not be sent.");
+  }
+
+  async function signIn() {
+    const user = findUser(loginIdInput.value);
+    if (!user) return showAuthError("No account found. Check your email or username, or create one.");
+    if ((await hashPassword(user.salt, loginPasswordInput.value)) !== user.hash) return showAuthError("Wrong password.");
+    logIn(user.email);
+  }
+
+  function logIn(email) {
+    localStorage.setItem("pp_session", email);
+    enterGame(users[email]);
+  }
+
+  // guest play: nothing is saved, no Elo, not on the leaderboard
+  function playAsGuest() {
+    localStorage.removeItem("pp_session");
+    enterGame({ email: "Guest", username: "Guest", guest: true, elo: START_ELO, wins: 0, losses: 0, goals: 0, history: [] });
+  }
+
+  function enterGame(user) {
+    currentUser = user;
+    applySkin();
+    authError.textContent = "";
+    loginIdInput.value = "";
+    loginPasswordInput.value = "";
+    newUsernameInput.value = "";
+    newEmailInput.value = "";
+    newPasswordInput.value = "";
+    showPage("menu");
+    renderUser();
+    renderLeaderboard();
+    renderProgress();
+    resetMatch();
+  }
+
+  // ===================== PAGES =====================
+  // page: "signin" | "signup" | "menu" | "shop" | "board" | "game"
+  function showPage(page) {
+    authEl.hidden = page !== "signin";
+    signupEl.hidden = page !== "signup";
+    menuEl.hidden = page !== "menu";
+    shopEl.hidden = page !== "shop";
+    boardEl.hidden = page !== "board";
+    appEl.hidden = page !== "game";
+    if (page === "signin") resumeRow.hidden = !currentUser;   // "Back to game" while a session is open
+    if (page !== "signin") authError.textContent = "";
+    if (page !== "signup") signupError.textContent = "";
+    if (page === "menu") renderMenu();
+    if (page === "shop") renderShop();
+    if (page === "board") renderBoard();
+  }
+
+  // Back button: leave the game and return to the menu.
+  function goBack() {
+    closeReplay();
+    if (state === "playing") state = "paused";
+    releaseKeys();
+    showPage("menu");
+  }
+
+  function signOut() {
+    localStorage.removeItem("pp_session");
+    currentUser = null;
+    releaseKeys();
+    resetMatch();
+    showPage("signin");
+  }
+
+  // ===================== MENU, SHOP AND LEADERBOARD =====================
+  function coinHtml(big) {
+    return `<img class="coin${big ? " big" : ""}" src="${COIN_URL}" alt="Coin">`;
+  }
+
+  function renderMenu() {
+    if (!currentUser) return;
+    if (currentUser.guest) {
+      menuUserEl.textContent = "Playing as guest  ·  create an account to save progress and use the shop";
+      menuCoinsEl.textContent = "-";
+    } else {
+      menuUserEl.textContent = currentUser.username + "  ·  Elo " + currentUser.elo + "  ·  " + rankLabel(currentUser);
+      menuCoinsEl.textContent = String(currentUser.medallions || 0);
+    }
+    menuCoinIconEl.innerHTML = coinHtml(false);
+  }
+
+  // the most Elo the wheel can reach: your Elo, rounded down to a whole step
+  function maxWheel() {
+    if (!currentUser || currentUser.guest) return 0;
+    return Math.floor(currentUser.elo / WHEEL_STEP) * WHEEL_STEP;
+  }
+
+  function updateWheel() {
+    wheelValueEl.textContent = wheelAmount + " Elo";
+  }
+
+  function turnWheel(dir) {
+    wheelAmount = clamp(wheelAmount + dir * WHEEL_STEP, 0, maxWheel());
+    updateWheel();
+  }
+
+  function renderShop() {
+    if (!currentUser) return;
+    const guest = !!currentUser.guest;
+    shopCoinIconEl.innerHTML = coinHtml(true);
+    shopCoinsEl.textContent = guest ? "-" : String(currentUser.medallions || 0);
+    shopRateEl.textContent = guest
+      ? ""
+      : EXCHANGE_RATE + " Elo = 1 medallion  ·  your Elo: " + currentUser.elo;
+    exchangeBtn.disabled = guest;
+    wheelAmount = clamp(wheelAmount, 0, maxWheel());
+    updateWheel();
+    renderSkins();
+    shopNoteEl.textContent = guest ? "Guest play can't use the shop. Create an account first." : "";
+  }
+
+  function exchange() {
+    if (!currentUser || currentUser.guest) return;
+    if (wheelAmount <= 0) {
+      shopNoteEl.textContent = "Scroll the wheel to choose how much Elo to exchange.";
+      return;
+    }
+    if (wheelAmount > currentUser.elo) {
+      shopNoteEl.textContent = "You don't have that much Elo.";
+      return;
+    }
+    const spent = wheelAmount;
+    const medallions = Math.floor(spent / EXCHANGE_RATE);
+    currentUser.elo -= spent;
+    currentUser.medallions = (currentUser.medallions || 0) + medallions;
+    wheelAmount = 0;
+    afterEloChange();   // saves and refreshes the user line and leaderboard
+    renderShop();
+    shopNoteEl.textContent = "Exchanged " + spent + " Elo for " + medallions + " medallion" + (medallions === 1 ? "" : "s") + ".";
+  }
+
+  // ===================== PADDLE SKINS (shop) =====================
+  // the style your paddle wears in a match. Guests always play with the classic paddle.
+  function skinStyleFor(u) {
+    if (!u || u.guest) return "none";
+    if (u.equipped === "color" && u.skins.color) return "color:" + u.skinColor;
+    if (u.equipped === "rainbow" && u.skins.rainbow) return "rainbow";
+    return "none";
+  }
+
+  // your paddle is the left one (W / S, or the mouse). The other paddle stays plain white.
+  function applySkin() {
+    paddles.left.style = skinStyleFor(currentUser);
+    paddles.right.style = "none";
+  }
+
+  function renderSkins() {
+    const guest = !currentUser || !!currentUser.guest;
+    skinListEl.innerHTML = SKINS.map((skin) => {
+      const owned = !guest && !!currentUser.skins[skin.id];
+      const equipped = !guest && currentUser.equipped === skin.id;
+      const previewStyle = skin.id === "color" ? "color:" + (guest ? SKIN_COLORS[0] : currentUser.skinColor) : skin.id;
+
+      let buttons;
+      if (!owned) buttons = `<button data-act="buy" data-skin="${skin.id}" ${guest ? "disabled" : ""}>Buy for ${skin.price} Medallions</button>`;
+      else if (equipped) buttons = `<span class="skin-equipped">Equipped</span>`;
+      else buttons = `<button data-act="equip" data-skin="${skin.id}">Equip</button>`;
+
+      // owning Color Skins shows the color choices; picking one equips it
+      let swatches = "";
+      if (owned && skin.id === "color") {
+        swatches = `<div class="swatches">` + SKIN_COLORS.map((c) =>
+          `<button class="swatch${equipped && currentUser.skinColor === c ? " picked" : ""}" data-act="color" data-color="${c}" style="background:${c}" title="${c}"></button>`
+        ).join("") + `</div>`;
+      }
+
+      return `<div class="skin${equipped ? " equipped" : ""}">
+        <canvas class="skin-prev" data-style="${previewStyle}"></canvas>
+        <div class="skin-info">
+          <div class="skin-name">${skin.name}</div>
+          <div class="skin-price">${owned ? "Owned" : skin.price + " Medallions"}</div>
+          <div class="skin-desc">${skin.desc}</div>
+          ${swatches}
+          <div class="skin-btns">${buttons}</div>
+        </div>
+      </div>`;
+    }).join("");
+
+    skinListEl.querySelectorAll("canvas.skin-prev").forEach((c) => {
+      c.width = PADDLE_W;
+      c.height = PADDLE_H;
+      const c2 = c.getContext("2d");
+      c2.clearRect(0, 0, PADDLE_W, PADDLE_H);
+      drawPaddle(c2, 0, 0, c.dataset.style, 0);
+    });
+
+    classicBtn.disabled = guest;
+  }
+
+  function finishSkinChange(text) {
+    saveUsers();
+    applySkin();
+    renderShop();      // clears the note, so the message is set after it
+    shopNoteEl.textContent = text;
+  }
+
+  function buySkin(id) {
+    const skin = SKINS.find((s) => s.id === id);
+    if (!skin || currentUser.skins[id]) return;
+    if (currentUser.medallions < skin.price) {
+      shopNoteEl.textContent = "You need " + (skin.price - currentUser.medallions) + " more medallions for " + skin.name + ".";
+      return;
+    }
+    currentUser.medallions -= skin.price;
+    currentUser.skins[id] = true;
+    currentUser.equipped = id;
+    finishSkinChange("Bought " + skin.name + " and equipped it.");
+  }
+
+  function equipSkin(id) {
+    if (id === "classic") {
+      currentUser.equipped = "classic";
+      return finishSkinChange("Using the classic white paddle.");
+    }
+    const skin = SKINS.find((s) => s.id === id);
+    if (!skin || !currentUser.skins[id]) return;
+    currentUser.equipped = id;
+    finishSkinChange(skin.name + " equipped.");
+  }
+
+  function pickColor(color) {
+    if (!currentUser.skins.color) return;
+    currentUser.skinColor = color;
+    currentUser.equipped = "color";
+    finishSkinChange("Paddle color set.");
+  }
+
+  function renderBoard() {
+    const rows = Object.values(users)
+      .filter((u) => u.elo >= RANKED_ELO)
+      .sort((a, b) => b.elo - a.elo)
+      .slice(0, 10);
+    boardBodyEl.innerHTML = rows.length
+      ? rows.map((u, i) =>
+          `<tr><td>${i + 1}</td><td>${escapeHtml(u.username)}</td><td>${u.elo}</td><td>${u.wins}-${u.losses}</td></tr>`
+        ).join("")
+      : `<tr><td colspan="4" class="small">No ranked players yet.</td></tr>`;
+    boardNoteEl.textContent = "Ranked players only (" + RANKED_ELO + "+ Elo).";
+  }
+
+  function renderUser() {
+    if (!currentUser) return;
+    if (currentUser.guest) {
+      userLineEl.textContent = "Guest  ·  matches are not ranked or saved";
+      return;
+    }
+    userLineEl.textContent = currentUser.username + "  ·  Elo " + currentUser.elo +
+      "  ·  " + rankLabel(currentUser) + "  ·  " + currentUser.wins + "W-" + currentUser.losses + "L";
+  }
+
+  // only Ranked players (RANKED_ELO and up) are listed
+  function renderLeaderboard() {
+    const rows = Object.values(users)
+      .filter((u) => u.elo >= RANKED_ELO)
+      .sort((a, b) => b.elo - a.elo)
+      .slice(0, 10);
+    leaderBodyEl.innerHTML = rows.length
+      ? rows.map((u, i) =>
+          `<tr><td>${i + 1}</td><td>${escapeHtml(u.username)}</td><td>${u.elo}</td><td>${u.wins}-${u.losses}</td></tr>`
+        ).join("")
+      : `<tr><td colspan="4" class="small">No ranked players yet. Reach ${RANKED_ELO} Elo to appear here.</td></tr>`;
+  }
+
+  function renderProgress() {
+    if (!currentUser) {
+      progressSummaryEl.textContent = "Sign in to save your Elo, progress and replays.";
+      historyListEl.innerHTML = "";
+      return;
+    }
+    if (currentUser.guest) {
+      progressSummaryEl.textContent = "Guest matches are not saved. Create an account to keep your progress.";
+      historyListEl.innerHTML = "";
+      return;
+    }
+    const u = currentUser;
+    progressSummaryEl.textContent = "Elo " + u.elo + "  ·  " + rankLabel(u) + "  ·  " + (u.wins + u.losses) + " matches  ·  " +
+      u.wins + "W-" + u.losses + "L  ·  " + u.goals + " goals";
+    const rows = u.history.slice().reverse().map((h) => {
+      const when = new Date(h.date).toLocaleDateString();
+      const button = h.replayId && replayStore[h.replayId]
+        ? `<button data-replay="${h.replayId}">Replay</button>`
+        : `<span class="small">no replay</span>`;
+      const cls = h.result === "Win" ? "win" : "loss";
+      return `<div class="histRow"><div><span class="${cls}">${h.result}</span> ${h.score} vs ${escapeHtml(h.opponent)}<br>${when}  ·  +${h.eloGain} Elo</div>${button}</div>`;
+    });
+    historyListEl.innerHTML = rows.length ? rows.join("") : `<div class="small">No finished matches yet.</div>`;
+  }
+
+  function afterEloChange() {
+    saveUsers();
+    renderUser();
+    renderLeaderboard();
+  }
+
+  function showFlash(text) {
+    flashText = text;
+    flashUntil = performance.now() + 1000;
+  }
+
+  // ===================== RECORDING AND MATCH HISTORY =====================
+  // Signed-in vs Computer matches are recorded with a replay.
+  function startRecording() {
+    recording = countsForElo() ? { frames: [], goals: [], next: 0 } : null;
+  }
+
+  // saves a frame every 0.05 seconds of match time while the ball is in play
+  function sampleFrame() {
+    if (!recording || state !== "playing") return;
+    const elapsed = MATCH_SECONDS - timeLeft;
+    while (recording.next <= elapsed) {
+      recording.frames.push(
+        Math.round(ball.x), Math.round(ball.y),
+        Math.round(paddles.left.y), Math.round(paddles.right.y)
+      );
+      recording.next += REPLAY_STEP;
+    }
+  }
+
+  // saves a finished account match: win or loss, history row and replay
+  function finishMatchRecord(winner) {
+    const rec = recording;
+    recording = null;
+    if (!rec || !countsForElo()) return;
+
+    const won = winner === "left";
+    const myGoals = rec.goals.filter((g) => g[1] === "left").length;
+    const theirGoals = rec.goals.length - myGoals;
+    const eloGain = myGoals * GOAL_ELO + (won ? WIN_ELO : 0);
+    const now = new Date().toISOString();
+    const score = myGoals + "-" + theirGoals;
+
+    if (won) {
+      currentUser.elo += WIN_ELO;
+      currentUser.wins++;
+    } else {
+      currentUser.losses++;
+    }
+
+    const replayId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    replayStore[replayId] = {
+      id: replayId,
+      date: now,
+      opponent: "Computer",
+      mySide: "left",
+      styles: [paddles.left.style, paddles.right.style],
+      result: won ? "Win" : "Loss",
+      score,
+      goals: rec.goals,
+      frames: rec.frames
+    };
+    const saved = saveReplays();
+    if (!saved) delete replayStore[replayId];
+
+    currentUser.history.push({
+      date: now,
+      opponent: "Computer",
+      result: won ? "Win" : "Loss",
+      score,
+      eloGain,
+      replayId: saved ? replayId : null
+    });
+    if (currentUser.history.length > MAX_HISTORY) {
+      currentUser.history.splice(0, currentUser.history.length - MAX_HISTORY);
+    }
+
+    afterEloChange();
+    renderProgress();
+  }
+
+  // ===================== REPLAYS =====================
+  function openReplay(id) {
+    const rec = replayStore[id];
+    if (!rec || rec.frames.length < 4) {
+      replayNoteEl.textContent = "That replay isn't available any more.";
+      return;
+    }
+    replayNoteEl.textContent = "";
+    if (state === "playing") state = "paused";
+    releaseKeys();
+    replay = { rec, t: 0, playing: false, duration: (rec.frames.length / 4) * REPLAY_STEP };
+    seekBar.max = replay.duration;
+    seekBar.value = 0;
+    replayBar.hidden = false;
+    updateReplayView();
+  }
+
+  function closeReplay() {
+    if (!replay) return;
+    replay = null;
+    replayBar.hidden = true;
+  }
+
+  function toggleReplay() {
+    if (!replay) return;
+    if (replay.t >= replay.duration) replay.t = 0;   // start again from the beginning
+    replay.playing = !replay.playing;
+  }
+
+  function updateReplayView() {
+    const rec = replay.rec;
+    const mine = rec.mySide || "left";
+    let myScore = 0, theirScore = 0;
+    for (const [t, side] of rec.goals) {
+      if (t > replay.t) continue;
+      if (side === mine) myScore++; else theirScore++;
+    }
+    setText(score1El, String(myScore));
+    setText(score2El, String(theirScore));
+    setText(timerEl, formatTime(MATCH_SECONDS - replay.t));
+    setText(oppLabelEl, "Replay vs " + rec.opponent + "  ·  " + rec.result + " " + rec.score);
+    setText(messageEl, replay.playing ? "Replay  ·  SPACE to pause" : "Replay  ·  SPACE to play");
+    setText(playPauseBtn, replay.playing ? "Pause" : "Play");
+    if (document.activeElement !== seekBar) seekBar.value = replay.t;
+  }
+
+  // ===================== OPENINGS =====================
+  function renderOpenings() {
+    openingListEl.innerHTML = "";
+    for (const id of Object.keys(OPENINGS)) {
+      const o = OPENINGS[id];
+      const card = document.createElement("div");
+      card.className = "opening";
+      card.innerHTML =
+        `<div class="op-name">${o.name}</div>` +
+        `<div class="op-tag ${o.category}">${o.tag}</div>` +
+        (o.beginner ? `<div class="op-beginner">Beginner-Friendly</div>` : "") +
+        `<div class="op-desc">${o.desc}</div>`;
+      openingListEl.appendChild(card);
+    }
+  }
+
+  // ===================== MATCH FLOW =====================
+  function resetPaddles() {
+    for (const p of [paddles.left, paddles.right]) {
+      p.y = p.target = H / 2 - PADDLE_H / 2;
+    }
+  }
+
+  function placeBall() {
+    ball.x = W / 2;
+    ball.y = H / 2;
+    ball.vx = 0;
+    ball.vy = 0;
+    ball.speed = START_SPEED;
+  }
+
+  function serveBall() {
+    const angle = (Math.random() * 60 - 30) * Math.PI / 180;
+    ball.speed = START_SPEED;
+    ball.vx = serveDir * ball.speed * Math.cos(angle);
+    ball.vy = ball.speed * Math.sin(angle);
+    state = "playing";
+  }
+
+  function resetMatch() {
+    closeReplay();
+    s1 = 0;
+    s2 = 0;
+    timeLeft = MATCH_SECONDS;
+    suddenDeath = false;
+    winnerSide = null;
+    serveDir = Math.random() < 0.5 ? -1 : 1;
+    resetPaddles();
+    placeBall();
+    state = "serve";
+    startRecording();
+  }
+
+  function handleSpace() {
+    if (state === "serve") serveBall();
+    else if (state === "playing") state = "paused";
+    else if (state === "paused") state = "playing";
+    else if (state === "over") resetMatch();
+  }
+
+  function pressSpace() {
+    if (replay) { toggleReplay(); return; }
+    handleSpace();
+  }
+
+  function scorePoint(scorer) {
+    if (scorer === "left") s1++; else s2++;
+    if (recording) recording.goals.push([MATCH_SECONDS - timeLeft, scorer]);
+
+    if (countsForElo() && scorer === "left") {
+      currentUser.elo += GOAL_ELO;
+      currentUser.goals++;
+      showFlash("GOAL! +" + GOAL_ELO + " Elo");
+      afterEloChange();
+    } else {
+      showFlash("GOAL!");
+    }
+
+    if (suddenDeath || s1 >= WIN_SCORE || s2 >= WIN_SCORE) {
+      finishMatch(scorer);
+      return;
+    }
+    // the next serve goes toward the player who just lost the point
+    serveDir = scorer === "left" ? 1 : -1;
+    placeBall();
+    state = "serve";
+  }
+
+  function finishMatch(winner) {
+    state = "over";
+    winnerSide = winner;
+    ball.vx = 0;
+    ball.vy = 0;
+    finishMatchRecord(winner);
+  }
+
+  // ===================== SIMULATION =====================
+  function step(dt) {
+    timeLeft -= dt;
+    if (timeLeft <= 0) {
+      timeLeft = 0;
+      if (s1 !== s2) {
+        finishMatch(s1 > s2 ? "left" : "right");
+        return;
+      }
+      if (!suddenDeath) {
+        suddenDeath = true;
+        showFlash("SUDDEN DEATH!");
+      }
+    }
+    moveBall();
+  }
+
+  function moveBall() {
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // top and bottom walls
+    if (ball.y - BALL_R < 0) { ball.y = BALL_R; ball.vy = -ball.vy; }
+    if (ball.y + BALL_R > H) { ball.y = H - BALL_R; ball.vy = -ball.vy; }
+
+    const L = paddles.left, R = paddles.right;
+
+    // left paddle
+    if (ball.vx < 0 &&
+        ball.x - BALL_R <= L.x + PADDLE_W && ball.x + BALL_R >= L.x &&
+        ball.y >= L.y && ball.y <= L.y + PADDLE_H) {
+      ball.x = L.x + PADDLE_W + BALL_R;
+      hitPaddle(L, 1);
+    }
+
+    // right paddle
+    if (ball.vx > 0 &&
+        ball.x + BALL_R >= R.x && ball.x - BALL_R <= R.x + PADDLE_W &&
+        ball.y >= R.y && ball.y <= R.y + PADDLE_H) {
+      ball.x = R.x - BALL_R;
+      hitPaddle(R, -1);
+    }
+
+    // goals
+    if (ball.x < -BALL_R) scorePoint("right");
+    else if (ball.x > W + BALL_R) scorePoint("left");
+  }
+
+  // dir = where the ball goes after the hit (1 = right, -1 = left)
+  // Every paddle plays the same way. Openings are playstyles described in the panel, not effects.
+  function hitPaddle(p, dir) {
+    const hitPos = clamp((ball.y - (p.y + PADDLE_H / 2)) / (PADDLE_H / 2), -1, 1);
+    ball.speed = Math.min(ball.speed + SPEED_UP, MAX_SPEED);
+    const angle = hitPos * 50 * Math.PI / 180;
+    ball.vx = dir * ball.speed * Math.cos(angle);
+    ball.vy = ball.speed * Math.sin(angle);
+  }
+
+  // ===================== COMPUTER OPPONENT =====================
+  // Bot skill follows your Elo, so it plays at your level.
+  function moveComputer(p) {
+    const elo = currentUser && !currentUser.guest ? currentUser.elo : START_ELO;
+    const speed = clamp(2.5 + elo / 500, 2.5, 6);
+    const center = p.y + PADDLE_H / 2;
+    const target = ball.vx > 0 ? ball.y : H / 2;   // only chase the ball when it's coming
+    if (center < target - 8) p.y += speed;
+    else if (center > target + 8) p.y -= speed;
+    p.y = clamp(p.y, 0, H - PADDLE_H);
+    p.target = p.y;
+  }
+
+  // ===================== PADDLE INPUT =====================
+  // Left paddle: W / S. Right paddle: UP / DOWN in vs Player, or the computer in vs Computer.
+  function updatePaddles() {
+    const left = paddles.left;
+    if (keys["w"]) left.target -= PADDLE_SPEED;
+    if (keys["s"]) left.target += PADDLE_SPEED;
+    left.target = clamp(left.target, 0, H - PADDLE_H);
+    left.y += (left.target - left.y) * 0.4;
+
+    const right = paddles.right;
+    if (mode === "bot") {
+      moveComputer(right);
+    } else {
+      if (keys["arrowup"]) right.target -= PADDLE_SPEED;
+      if (keys["arrowdown"]) right.target += PADDLE_SPEED;
+      right.target = clamp(right.target, 0, H - PADDLE_H);
+      right.y += (right.target - right.y) * 0.4;
+    }
+  }
+
+  // mouse and touch aiming only apply to your paddle in vs Computer
+  function aimFromClientY(clientY) {
+    if (mode !== "bot") return;
+    const rect = canvas.getBoundingClientRect();
+    const y = (clientY - rect.top) * (H / rect.height);
+    paddles.left.target = y - PADDLE_H / 2;
+  }
+
+  // ===================== MODE =====================
+  function updateModeButton() {
+    modeBtn.textContent = mode === "bot" ? "Mode: vs Computer" : "Mode: vs Player (offline)";
+  }
+
+  function setMode(next) {
+    mode = next;
+    updateModeButton();
+    resetMatch();
+  }
+
+  // ===================== HUD =====================
+  function hudText() {
+    if (state === "serve") return suddenDeath ? "SUDDEN DEATH - press SPACE to serve" : "Press SPACE to serve";
+    if (state === "paused") return "Paused - press SPACE to continue";
+    if (state === "over") {
+      let who;
+      if (mode === "bot") who = winnerSide === "left" ? "You win!" : "Computer wins!";
+      else who = winnerSide === "left" ? "Player 1 wins!" : "Player 2 wins!";
+      return who + " Press SPACE to play again";
+    }
+    return "";
+  }
+
+  function oppLabel() {
+    if (mode === "bot") {
+      return currentUser && !currentUser.guest ? "vs Bot  ·  Elo " + currentUser.elo : "vs Bot";
+    }
+    return "Player 1: W / S   ·   Player 2: UP / DOWN   ·   not ranked";
+  }
+
+  function updateHud() {
+    setText(score1El, String(s1));
+    setText(score2El, String(s2));
+    setText(timerEl, suddenDeath ? "SUDDEN DEATH" : formatTime(timeLeft));
+    timerEl.classList.toggle("low", !suddenDeath && timeLeft < 30);
+    setText(oppLabelEl, oppLabel());
+    setText(messageEl, hudText());
+  }
+
+  // ===================== DRAW =====================
+  // Draws one paddle. The box is always PADDLE_W x PADDLE_H; skins only change its color.
+  // time is in seconds and moves the rainbow.
+  function drawPaddle(c2, x, y, style, time) {
+    const s = style || "none";
+    if (s === "rainbow") {
+      const grad = c2.createLinearGradient(0, y, 0, y + PADDLE_H);
+      const base = (time * 40) % 360;   // one full turn every 9 seconds
+      for (let i = 0; i <= 6; i++) grad.addColorStop(i / 6, "hsl(" + ((base + i * 60) % 360) + ", 100%, 60%)");
+      c2.fillStyle = grad;
+    } else if (s.startsWith("color:")) {
+      c2.fillStyle = s.slice(6);
+    } else {
+      c2.fillStyle = "#fff";
+    }
+    c2.fillRect(x, y, PADDLE_W, PADDLE_H);
+  }
+
+  // Draws the court from positions. Used for live play and for replays.
+  function drawField(bx, by, ly, ry, leftStyle, rightStyle, time) {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, W, H);
+
+    // dashed center line
+    ctx.strokeStyle = "#444";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 10]);
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 0);
+    ctx.lineTo(W / 2, H);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // paddles: the left one wears your skin, the right one stays white
+    drawPaddle(ctx, PADDLE_EDGE, ly, leftStyle, time);
+    drawPaddle(ctx, W - PADDLE_EDGE - PADDLE_W, ry, rightStyle, time);
+
+    // ball
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(bx, by, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function draw(now) {
+    drawField(ball.x, ball.y, paddles.left.y, paddles.right.y, paddles.left.style, paddles.right.style, now / 1000);
+
+    if (now < flashUntil) {
+      ctx.fillStyle = "#ffd166";
+      ctx.font = "bold 18px 'Pixelify Sans', Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(flashText, W / 2, 34);
+    }
+  }
+
+  function drawReplayFrame() {
+    const d = replay.rec.frames;
+    const count = d.length / 4;
+    const i = Math.min(Math.floor(replay.t / REPLAY_STEP), count - 1) * 4;
+    drawField(d[i], d[i + 1], d[i + 2], d[i + 3], replay.rec.styles[0], replay.rec.styles[1], replay.t);
+  }
+
+  // ===================== BACKGROUND =====================
+  function sizeBackground() {
+    bgCanvas.width = Math.ceil(window.innerWidth / BG_SCALE);
+    bgCanvas.height = Math.ceil(window.innerHeight / BG_SCALE);
+  }
+
+  // checkerboard that slides left forever
+  function drawBackground(dt) {
+    bgOffset = (bgOffset + BG_SPEED * dt) % (BG_CELL * 2);
+    const w = bgCanvas.width, h = bgCanvas.height;
+    bgCtx.fillStyle = BG_DARK;
+    bgCtx.fillRect(0, 0, w, h);
+    bgCtx.fillStyle = BG_LIGHT;
+    const cols = Math.ceil(w / BG_CELL) + 3;
+    const rows = Math.ceil(h / BG_CELL) + 1;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        if ((row + col) % 2 === 0) continue;   // draw only the light squares
+        bgCtx.fillRect(col * BG_CELL - bgOffset, row * BG_CELL, BG_CELL, BG_CELL);
+      }
+    }
+  }
+
+  // ===================== MUSIC =====================
+  const music = new Audio(MUSIC_SRC);
+  music.loop = false;   // we repeat manually so every repeat starts at MUSIC_START
+  music.volume = 0.35;
+  music.addEventListener("loadedmetadata", () => { music.currentTime = MUSIC_START; });
+  music.addEventListener("ended", () => {
+    music.currentTime = MUSIC_START;
+    music.play().catch(() => {});
+  });
+  let musicOn = localStorage.getItem("pp_music") !== "off";
+  let musicMissing = false;
+
+  music.addEventListener("error", () => {
+    musicMissing = true;
+    updateMusicButton();
+  });
+
+  function updateMusicButton() {
+    if (musicMissing) musicBtn.textContent = "Music: file missing";
+    else musicBtn.textContent = musicOn ? "Music: on" : "Music: off";
+  }
+
+  // browsers only allow sound after the first click or key press, so this is tried on each one
+  function playMusic() {
+    if (!musicOn || musicMissing || !music.paused) return;
+    music.play().catch(() => {});
+  }
+
+  function setMusic(on) {
+    musicOn = on;
+    localStorage.setItem("pp_music", on ? "on" : "off");
+    if (on) playMusic();
+    else music.pause();
+    updateMusicButton();
+  }
+
+  // ===================== MAIN LOOP =====================
+  function frame(now) {
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    drawBackground(dt);
+
+    if (replay) {
+      if (replay.playing) replay.t += dt;
+      if (replay.t >= replay.duration) {
+        replay.t = replay.duration;
+        replay.playing = false;
+      }
+      updateReplayView();
+      drawReplayFrame();
+    } else if (!appEl.hidden) {
+      updatePaddles();
+      if (state === "playing") step(dt);
+      sampleFrame();
+      updateHud();
+      draw(now);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ===================== START =====================
+  function init() {
+    upgradeAccounts();
+    sizeBackground();
+    signupNote.textContent = EMAIL_READY
+      ? "A welcome email will be sent to this address."
+      : "Welcome email is not set up yet. Add your EmailJS keys at the top of the file.";
+    renderOpenings();
+    applySkin();
+    updateModeButton();
+    resetMatch();
+    renderLeaderboard();
+    renderProgress();
+
+    updateMusicButton();
+    playMusic();
+
+    const savedEmail = localStorage.getItem("pp_session");
+    if (savedEmail && users[savedEmail]) logIn(savedEmail);
+    else showPage("signin");
+
+    requestAnimationFrame(frame);
+  }
+
+  // ===================== INPUT WIRING =====================
+  signInBtn.addEventListener("click", signIn);
+  loginIdInput.addEventListener("keydown", (e) => { if (e.key === "Enter") loginPasswordInput.focus(); });
+  loginPasswordInput.addEventListener("keydown", (e) => { if (e.key === "Enter") signIn(); });
+  toSignUpBtn.addEventListener("click", () => showPage("signup"));
+  toSignInBtn.addEventListener("click", () => showPage("signin"));
+  createAccountBtn.addEventListener("click", createAccount);
+  newPasswordInput.addEventListener("keydown", (e) => { if (e.key === "Enter") createAccount(); });
+  guestBtn.addEventListener("click", playAsGuest);
+  resumeBtn.addEventListener("click", () => showPage("game"));
+  backBtn.addEventListener("click", goBack);
+  signOutBtn.addEventListener("click", signOut);
+
+  menuPlayBtn.addEventListener("click", () => showPage("game"));
+  menuShopBtn.addEventListener("click", () => showPage("shop"));
+  menuBoardBtn.addEventListener("click", () => showPage("board"));
+  menuSignOutBtn.addEventListener("click", signOut);
+  shopBackBtn.addEventListener("click", () => showPage("menu"));
+  boardBackBtn.addEventListener("click", () => showPage("menu"));
+  wheelUpBtn.addEventListener("click", () => turnWheel(1));
+  wheelDownBtn.addEventListener("click", () => turnWheel(-1));
+  exchangeBtn.addEventListener("click", () => { exchange(); exchangeBtn.blur(); });
+  // skin buttons: buy, equip, pick a color; the list is redrawn after each change
+  skinListEl.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn || !currentUser || currentUser.guest) return;
+    const act = btn.dataset.act;
+    if (act === "buy") buySkin(btn.dataset.skin);
+    else if (act === "equip") equipSkin(btn.dataset.skin);
+    else if (act === "color") pickColor(btn.dataset.color);
+    btn.blur();
+  });
+  classicBtn.addEventListener("click", () => { equipSkin("classic"); classicBtn.blur(); });
+  // scrolling the mouse wheel over the number changes the amount; the page doesn't scroll
+  wheelEl.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    turnWheel(e.deltaY < 0 ? 1 : -1);
+  }, { passive: false });
+
+  modeBtn.addEventListener("click", () => {
+    setMode(mode === "bot" ? "local" : "bot");
+    modeBtn.blur();   // so SPACE doesn't press this button
+  });
+
+  restartBtn.addEventListener("click", () => {
+    resetMatch();
+    restartBtn.blur();
+  });
+
+  playPauseBtn.addEventListener("click", () => { toggleReplay(); playPauseBtn.blur(); });
+  exitReplayBtn.addEventListener("click", () => { closeReplay(); exitReplayBtn.blur(); });
+  seekBar.addEventListener("input", () => { if (replay) replay.t = Number(seekBar.value); });
+  seekBar.addEventListener("change", () => seekBar.blur());
+
+  historyListEl.addEventListener("click", (e) => {
+    const id = e.target.dataset && e.target.dataset.replay;
+    if (id) openReplay(id);
+  });
+
+
+  canvas.addEventListener("mousemove", (e) => aimFromClientY(e.clientY));
+  canvas.addEventListener("touchmove", (e) => {
+    e.preventDefault();   // stop the phone from scrolling while you play
+    if (e.touches[0]) aimFromClientY(e.touches[0].clientY);
+  }, { passive: false });
+  canvas.addEventListener("click", () => {
+    if (state !== "playing") pressSpace();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (appEl.hidden || e.target.tagName === "INPUT") return;
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+
+    // stop the page scrolling, and stop buttons from being "pressed" by SPACE
+    if (k === " " || k.startsWith("arrow")) e.preventDefault();
+
+    if (k === " " && !e.repeat) pressSpace();
+  });
+
+  document.addEventListener("keyup", (e) => {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  // if you switch windows while holding a key, stop it from getting stuck
+  window.addEventListener("blur", releaseKeys);
+  window.addEventListener("resize", sizeBackground);
+
+  musicBtn.addEventListener("click", () => {
+    setMusic(!musicOn);
+    musicBtn.blur();   // so SPACE doesn't press this button
+  });
+  document.addEventListener("pointerdown", playMusic);
+  document.addEventListener("keydown", playMusic);
+
+  init();
+</script>
+</body>
+</html>
